@@ -1,6 +1,8 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 admin.initializeApp(functions.config().firebase);
+const express = require('express');
+const app = express();
 
 // // Create and Deploy Your First Cloud Functions
 // // https://firebase.google.com/docs/functions/write-firebase-functions
@@ -10,26 +12,30 @@ exports.helloWorld = functions.https.onRequest((request, response) => {
     response.send('Hello chatbee!');
 });
 
-exports.getBuzzes = functions.https.onRequest((req, res) => {
+app.get('/buzzes', (req, res) => {
     admin
         .firestore()
         .collection('buzzes')
+        .orderBy('createdAt', 'desc')
         .get()
         .then((data) => {
             let buzzes = [];
             data.forEach((doc) => {
-                buzzes.push(doc.data());
+                buzzes.push({
+                    buzzId: doc.id,
+                    ...doc.data(),
+                });
             });
             return res.json(buzzes);
         })
         .catch((err) => console.log(err));
 });
 
-exports.createBuzzes = functions.https.onRequest((req, res) => {
+app.post('/buzz', (req, res) => {
     const newBuzz = {
         body: req.body.body,
         userHandle: req.body.userHandle,
-        createdAt: admin.firestore.Timestamp.fromDate(new Date()),
+        createdAt: new Date().toISOString(),
     };
 
     admin
@@ -44,3 +50,5 @@ exports.createBuzzes = functions.https.onRequest((req, res) => {
             console.error(err);
         });
 });
+
+exports.api = functions.https.onRequest(app);
